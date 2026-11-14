@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gastos</title>
+<style>
+:root{--bg:#f5f5f7;--card:#fff;--tx:#1d1d1f;--mu:#86868b;--ac:#0a84ff;--ln:#e5e5ea;--ok:#30d158;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#000;--card:#1c1c1e;--tx:#f5f5f7;--ln:#2c2c2e}}
+:root[data-theme=dark]{--bg:#000;--card:#1c1c1e;--tx:#f5f5f7;--ln:#2c2c2e}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font:16px -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;padding:16px 16px 96px;max-width:520px;margin:auto}
+h2{font-size:28px;margin:8px 0 16px}.mu{color:var(--mu);font-size:14px}
+.card{background:var(--card);border-radius:18px;padding:16px;margin-bottom:12px}
+input,select,textarea,button{font:inherit;color:var(--tx)}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--ln);border-radius:12px;padding:12px;margin-top:8px}
+#amt{font-size:56px;font-weight:700;text-align:center;border:0;background:none;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.chip{border:0;background:var(--bg);border-radius:20px;padding:10px 14px;transition:.15s}
+.chip.on{background:var(--ac);color:#fff;transform:scale(1.04)}
+.big{width:100%;border:0;border-radius:16px;padding:18px;font-size:20px;font-weight:600;background:var(--ac);color:#fff;margin-top:8px}
+.big.g{background:var(--card);color:var(--ac)}.big.r{background:var(--card);color:#ff453a}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-around;background:var(--card);border-top:1px solid var(--ln);padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px))}
+nav button{background:none;border:0;color:var(--mu);font-size:13px;padding:6px 12px}nav button.on{color:var(--ac);font-weight:600}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid .card{margin:0}.k{font-size:24px;font-weight:700}
+.b{display:grid;grid-template-columns:78px 1fr auto;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+.b i{display:block;height:10px;border-radius:5px;background:var(--ac);transition:width .4s}.b b{font-weight:500}
+.row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--ln)}
+.view{display:none}.view.on{display:block;animation:f .2s}@keyframes f{from{opacity:0}}
+#toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:var(--ok);color:#fff;padding:10px 18px;border-radius:20px;opacity:0;transition:.25s;pointer-events:none}
+#toast.s{opacity:1}
+</style></head><body>
+<div id="toast"></div>
+
+<section class="view" id="captura">
+ <div class="card"><input id="amt" inputmode="decimal" placeholder="$0" autocomplete="off"></div>
+ <div class="chips" id="chips"></div>
+ <div class="card"><input id="desc" placeholder="Descripción (opcional)">
+ <select id="pay"><option value="">Método de pago (opcional)</option><option>Efectivo</option><option>Tarjeta de crédito</option><option>Tarjeta de débito</option><option>Transferencia</option></select></div>
+ <button class="big" id="save">Guardar</button>
+ <button class="big r" id="del" hidden>Eliminar</button>
+ <button class="big g" id="cancel" hidden>Cancelar</button>
+</section>
+
+<section class="view" id="panel">
+ <h2>Panel</h2>
+ <div class="grid">
+  <div class="card"><div class="mu">Hoy</div><div class="k" id="kd"></div></div>
+  <div class="card"><div class="mu">Semana</div><div class="k" id="kw"></div></div>
+  <div class="card"><div class="mu">Mes</div><div class="k" id="km"></div></div>
+  <div class="card"><div class="mu">Transacciones (mes)</div><div class="k" id="kn"></div></div>
+  <div class="card"><div class="mu">Categoría top</div><div class="k" id="kc"></div></div>
+  <div class="card"><div class="mu">Promedio diario</div><div class="k" id="ka"></div></div>
+ </div>
+ <div class="card" style="margin-top:12px"><b>Por categoría (mes)</b><div id="g1"></div></div>
+ <div class="card"><b>Últimos 14 días</b><div id="g2"></div></div>
+ <div class="card"><b>Comparación mensual</b><div id="g3"></div></div>
+</section>
+
+<section class="view" id="historial">
+ <h2>Historial</h2>
+ <input id="q" placeholder="Buscar descripción">
+ <select id="fc"></select>
+ <input id="fd" type="date">
+ <div class="card" id="list" style="margin-top:12px"></div>
+</section>
+
+<section class="view" id="ajustes">
+ <h2>Ajustes</h2>
+ <div class="card"><b>Moneda</b><input id="cur" maxlength="3"></div>
+ <div class="card"><b>Categorías</b> <span class="mu">(una por línea)</span><textarea id="cats" rows="9"></textarea><button class="big g" id="scats">Guardar categorías</button></div>
+ <div class="card"><b>Excel (Power Automate)</b><p class="mu">Pega la URL HTTP de tu flujo. Se guarda solo en este dispositivo.</p>
+  <input id="url" placeholder="https://...logic.azure.com/..." autocapitalize="off">
+  <button class="big g" id="con">Conectar</button><button class="big r" id="dis">Desconectar</button></div>
+ <div class="card"><b>Sincronización</b><p id="st" class="mu"></p><button class="big g" id="retry">Reintentar ahora</button></div>
+ <div class="card"><b>Exportar</b><p class="mu">Copia todos los gastos como CSV al portapapeles.</p><button class="big g" id="exp">Copiar CSV</button></div>
+ <div class="card"><b>Enlace para el Atajo</b><p class="mu" id="lnk" style="word-break:break-all"></p></div>
+</section>
+
+<nav id="nav"><button data-t="captura">Captura</button><button data-t="panel">Panel</button><button data-t="historial">Historial</button><button data-t="ajustes">Ajustes</button></nav>
+
+<script>
+const $=s=>document.querySelector(s);
+let S={ex:[],cats:["Comida","Transporte","Supermercado","Entretenimiento","Servicios","Compras","Salud","Suscripciones","Otros"],cur:"MXN",url:"",last:"Comida"};
+try{Object.assign(S,JSON.parse(localStorage.getItem("gastos")||"{}"))}catch(e){}
+const persist=()=>{try{localStorage.setItem("gastos",JSON.stringify(S))}catch(e){}};
+const money=n=>new Intl.NumberFormat("es-MX",{style:"currency",currency:S.cur||"MXN"}).format(n);
+const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pad=n=>String(n).padStart(2,"0");
+const dstr=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
+let cat=S.last,editId=null;
+const live=()=>S.ex.filter(e=>!e.del);
+function toast(t){const o=$("#toast");o.textContent=t;o.classList.add("s");setTimeout(()=>o.classList.remove("s"),1400)}
+
+/* navegación */
+function go(t){if(!["captura","panel","historial","ajustes"].includes(t))t="captura";
+ document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on",v.id==t));
+ document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t==t));
+ if(t=="captura")setTimeout(()=>$("#amt").focus(),60);
+ if(t=="panel")dash();if(t=="historial")hist();if(t=="ajustes")sets()}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{location.hash=b.dataset.t});
+addEventListener("hashchange",()=>go(location.hash.slice(1)));
+
+/* captura */
+function chips(){$("#chips").innerHTML=S.cats.map(c=>`<button class="chip${c==cat?" on":""}" data-c="${esc(c)}">${esc(c)}</button>`).join("");
+ document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{cat=b.dataset.c;chips()})}
+function resetForm(){editId=null;$("#amt").value="";$("#desc").value="";$("#pay").value="";cat=S.last;
+ $("#save").textContent="Guardar";$("#del").hidden=$("#cancel").hidden=true;chips()}
+$("#save").onclick=()=>{
+ const m=parseFloat($("#amt").value.replace(/[$,\s]/g,"").replace(",","."));
+ if(!(m>0)){toast("Escribe un monto");$("#amt").focus();return}
+ const n=new Date(),v={m,cat:cat||"Otros",d:$("#desc").value.trim(),p:$("#pay").value,c:S.cur};
+ if(editId){const e=S.ex.find(x=>x.id==editId);Object.assign(e,v,{ok:false})}
+ else S.ex.push({id:uid(),f:dstr(n),h:pad(n.getHours())+":"+pad(n.getMinutes())+":"+pad(n.getSeconds()),...v,ok:false});
+ S.last=v.cat;persist();toast("Guardado ✓");resetForm();$("#amt").focus();sync()};
+$("#del").onclick=()=>{const e=S.ex.find(x=>x.id==editId);
+ if(e.ok&&S.url){e.del=true;e.ok=false}else S.ex=S.ex.filter(x=>x!==e);
+ persist();toast("Eliminado");resetForm();location.hash="historial";sync()};
+$("#cancel").onclick=()=>{resetForm();location.hash="historial"};
+function edit(id){const e=S.ex.find(x=>x.id==id);editId=id;cat=e.cat;
+ $("#amt").value=e.m;$("#desc").value=e.d;$("#pay").value=e.p;chips();
+ $("#save").textContent="Actualizar";$("#del").hidden=$("#cancel").hidden=false;location.hash="captura"}
+
+/* panel */
+const bars=(el,data)=>{const mx=Math.max(1,...data.map(d=>d[1]));
+ $(el).innerHTML=data.length?data.map(d=>`<div class="b"><span>${esc(d[0])}</span><i style="width:${Math.max(2,d[1]/mx*100)}%"></i><b>${money(d[1])}</b></div>`).join(""):'<p class="mu">Sin datos</p>'};
+const sum=a=>a.reduce((s,e)=>s+e.m,0);
+function dash(){const L=live(),n=new Date(),td=dstr(n),mo=td.slice(0,7);
+ const w=new Date(n);w.setDate(n.getDate()-((n.getDay()+6)%7));const ws=dstr(w);
+ const M=L.filter(e=>e.f.startsWith(mo));
+ $("#kd").textContent=money(sum(L.filter(e=>e.f==td)));
+ $("#kw").textContent=money(sum(L.filter(e=>e.f>=ws)));
+ $("#km").textContent=money(sum(M));$("#kn").textContent=M.length;
+ $("#ka").textContent=money(sum(M)/n.getDate());
+ const bc={};M.forEach(e=>bc[e.cat]=(bc[e.cat]||0)+e.m);
+ const cs=Object.entries(bc).sort((a,b)=>b[1]-a[1]);
+ $("#kc").textContent=cs.length?cs[0][0]:"—";bars("#g1",cs);
+ const days=[];for(let i=13;i>=0;i--){const d=new Date(n);d.setDate(n.getDate()-i);const k=dstr(d);days.push([k.slice(5),sum(L.filter(e=>e.f==k))])}
+ bars("#g2",days);
+ const ms=[];for(let i=5;i>=0;i--){const d=new Date(n.getFullYear(),n.getMonth()-i,1);const k=d.getFullYear()+"-"+pad(d.getMonth()+1);ms.push([k,sum(L.filter(e=>e.f.startsWith(k)))])}
+ bars("#g3",ms)}
+
+/* historial */
+function hist(){const f=$("#fc");if(!f.options.length||f.dataset.n!=S.cats.join()){f.dataset.n=S.cats.join();f.innerHTML='<option value="">Todas las categorías</option>'+S.cats.map(c=>`<option>${esc(c)}</option>`).join("")}
+ const q=$("#q").value.toLowerCase(),c=f.value,d=$("#fd").value;
+ const R=live().filter(e=>(!c||e.cat==c)&&(!d||e.f==d)&&(!q||e.d.toLowerCase().includes(q))).sort((a,b)=>(b.f+b.h).localeCompare(a.f+a.h));
+ $("#list").innerHTML=R.length?R.map(e=>`<div class="row" data-id="${e.id}"><div><b>${esc(e.cat)}</b> ${S.url&&!e.ok?"•":""}<div class="mu">${e.f} ${e.h.slice(0,5)}${e.d?" · "+esc(e.d):""}${e.p?" · "+esc(e.p):""}</div></div><b>${money(e.m)}</b></div>`).join(""):'<p class="mu">Sin gastos</p>';
+ document.querySelectorAll(".row").forEach(r=>r.onclick=()=>edit(r.dataset.id))}
+["#q","#fc","#fd"].forEach(s=>$(s).oninput=hist);
+
+/* sincronización: cola local, idempotente por ID */
+function status(t){const o=$("#st");if(o)o.textContent=t}
+async function sync(){
+ const P=S.ex.filter(e=>!e.ok);
+ if(!S.url)return status("Sin conectar a Excel. Pendientes: "+P.length);
+ if(!navigator.onLine)return status("Sin internet. Pendientes: "+P.length);
+ let fail=0;
+ for(const e of P){try{
+  await fetch(S.url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify({op:e.del?"delete":"upsert",id:e.id,fecha:e.f,hora:e.h,monto:e.m,moneda:e.c,categoria:e.cat,descripcion:e.d,metodo:e.p,mes:+e.f.slice(5,7),anio:+e.f.slice(0,4)})});
+  e.ok=true;if(e.del)S.ex=S.ex.filter(x=>x!==e)}catch(x){fail++;break}}
+ persist();status(fail?"Error de red. Pendientes: "+S.ex.filter(e=>!e.ok).length:"Todo enviado ("+new Date().toLocaleTimeString("es-MX")+")")}
+addEventListener("online",sync);
+
+/* ajustes */
+function sets(){$("#cur").value=S.cur;$("#cats").value=S.cats.join("\n");$("#url").value=S.url?"••••••••(guardada)":"";
+ $("#lnk").textContent=location.href.split("#")[0]+"#captura";
+ status((S.url?"Conectado. ":"Sin conectar. ")+"Pendientes: "+S.ex.filter(e=>!e.ok).length)}
+$("#cur").onchange=()=>{S.cur=$("#cur").value.toUpperCase()||"MXN";persist();toast("Moneda guardada")};
+$("#scats").onclick=()=>{const c=$("#cats").value.split("\n").map(s=>s.trim()).filter(Boolean);
+ if(!c.length)return toast("Agrega una categoría");S.cats=c;if(!c.includes(S.last))S.last=c[0];persist();chips();toast("Categorías guardadas")};
+$("#con").onclick=()=>{const u=$("#url").value.trim();if(!/^https:\/\//.test(u))return toast("URL no válida");S.url=u;persist();toast("Conectado");sync();sets()};
+$("#dis").onclick=()=>{S.url="";persist();toast("Desconectado");sets()};
+$("#retry").onclick=sync;
+$("#exp").onclick=async()=>{const r=[["ID","Fecha","Hora","Monto","Moneda","Categoría","Descripción","Método de pago"],...live().map(e=>[e.id,e.f,e.h,e.m,e.c,e.cat,e.d,e.p])];
+ const t=r.map(a=>a.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(",")).join("\n");
+ try{await navigator.clipboard.writeText(t);toast("CSV copiado")}catch(e){toast("No se pudo copiar")}};
+
+/* Atajo: ?m=150&c=Comida guarda solo y limpia la URL (evita duplicar al recargar) */
+(function(){const p=new URLSearchParams(location.search),m=parseFloat((p.get("m")||"").replace(",","."));
+ if(!(m>0))return;const n=new Date(),k=p.get("c")||"Otros";
+ S.ex.push({id:uid(),f:dstr(n),h:pad(n.getHours())+":"+pad(n.getMinutes())+":"+pad(n.getSeconds()),m,cat:k,d:p.get("d")||"",p:p.get("p")||"",c:S.cur,ok:false});
+ S.last=k;cat=k;persist();history.replaceState(null,"",location.pathname+"#captura");toast("Guardado ✓")})();
+chips();go(location.hash.slice(1));sync();
+</script></body></html>
